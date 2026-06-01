@@ -1,15 +1,16 @@
 import { Card, PageTitle } from "@/components/ui";
-import { env } from "@/lib/env";
-
-const containers = [
-  env.AZURE_STORAGE_CONTAINER_KYC,
-  env.AZURE_STORAGE_CONTAINER_RECEIPTS,
-  env.AZURE_STORAGE_CONTAINER_AUDITS,
-  env.AZURE_STORAGE_CONTAINER_STATEMENTS,
-  env.AZURE_STORAGE_CONTAINER_EXPORTS
-];
+import { getEnv } from "@/lib/env";
 
 export default function BlobDemoPage() {
+  const env = getEnv();
+  const containers = [
+    env.AZURE_STORAGE_CONTAINER_KYC,
+    env.AZURE_STORAGE_CONTAINER_RECEIPTS,
+    env.AZURE_STORAGE_CONTAINER_AUDITS,
+    env.AZURE_STORAGE_CONTAINER_STATEMENTS,
+    env.AZURE_STORAGE_CONTAINER_EXPORTS
+  ];
+
   return (
     <div>
       <PageTitle

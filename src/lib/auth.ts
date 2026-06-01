@@ -3,17 +3,20 @@ import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
-import { env } from "@/lib/env";
+import { getRequiredEnv } from "@/lib/env";
 import { prisma } from "@/lib/db";
 
 const SESSION_COOKIE = "bank_session";
-const secret = new TextEncoder().encode(env.SESSION_SECRET);
 
 type SessionPayload = {
   sub: string;
   role: UserRole;
   email: string;
 };
+
+function getSessionSecret() {
+  return new TextEncoder().encode(getRequiredEnv("SESSION_SECRET"));
+}
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
@@ -28,7 +31,7 @@ export async function createSession(payload: SessionPayload) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("12h")
-    .sign(secret);
+    .sign(getSessionSecret());
 
   cookies().set(SESSION_COOKIE, token, {
     httpOnly: true,
@@ -49,7 +52,7 @@ export async function getSession() {
   }
 
   try {
-    const verified = await jwtVerify(token, secret);
+    const verified = await jwtVerify(token, getSessionSecret());
     return verified.payload as unknown as SessionPayload;
   } catch {
     return null;

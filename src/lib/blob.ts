@@ -5,7 +5,7 @@ import {
   StorageSharedKeyCredential
 } from "@azure/storage-blob";
 import { DefaultAzureCredential } from "@azure/identity";
-import { env } from "@/lib/env";
+import { getEnv, getRequiredEnv } from "@/lib/env";
 import { sha256 } from "@/lib/utils";
 
 type UploadBlobInput = {
@@ -19,9 +19,10 @@ type UploadBlobInput = {
 const credential = new DefaultAzureCredential();
 
 function getBlobServiceClient() {
+  const env = getEnv();
   const useManagedIdentity = env.AZURE_STORAGE_USE_MANAGED_IDENTITY === "true";
   if (useManagedIdentity) {
-    return new BlobServiceClient(env.AZURE_STORAGE_ACCOUNT_URL, credential);
+    return new BlobServiceClient(getRequiredEnv("AZURE_STORAGE_ACCOUNT_URL"), credential);
   }
 
   if (!env.AZURE_STORAGE_CONNECTION_STRING) {
@@ -57,6 +58,7 @@ export async function uploadBlob(input: UploadBlobInput) {
 }
 
 export async function generateReadUrl(containerName: string, blobPath: string) {
+  const env = getEnv();
   const service = getBlobServiceClient();
   const blobClient = service.getContainerClient(containerName).getBlobClient(blobPath);
   const useManagedIdentity = env.AZURE_STORAGE_USE_MANAGED_IDENTITY === "true";
@@ -72,7 +74,7 @@ export async function generateReadUrl(containerName: string, blobPath: string) {
         expiresOn: new Date(Date.now() + 10 * 60 * 1000)
       },
       key,
-      env.AZURE_STORAGE_ACCOUNT_NAME
+      getRequiredEnv("AZURE_STORAGE_ACCOUNT_NAME")
     );
     return `${blobClient.url}?${sas.toString()}`;
   }
@@ -87,7 +89,7 @@ export async function generateReadUrl(containerName: string, blobPath: string) {
     throw new Error("AccountKey missing from connection string.");
   }
 
-  const sharedKey = new StorageSharedKeyCredential(env.AZURE_STORAGE_ACCOUNT_NAME, accountKeyMatch[1]);
+  const sharedKey = new StorageSharedKeyCredential(getRequiredEnv("AZURE_STORAGE_ACCOUNT_NAME"), accountKeyMatch[1]);
   const sas = generateBlobSASQueryParameters(
     {
       containerName,
