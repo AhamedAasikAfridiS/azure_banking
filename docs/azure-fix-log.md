@@ -60,8 +60,53 @@ This file tracks live Azure investigation and remediation work performed against
 ### Current Conclusion
 
 - Azure configuration issues were real and have been corrected.
-- The remaining blocker is the deployed application package.
-- Repository-side deployment fixes were prepared locally:
-  - Next.js standalone output enabled
-  - GitHub Actions workflow updated to build and deploy the standalone artifact
-- These repo changes still need to be pushed so Azure receives the corrected runtime package.
+- The remaining blocker was the deployed application package and several runtime mismatches.
+
+### 2026-06-01 Deployment Repair Sequence
+
+#### Workflow and Packaging Fixes
+
+- Pushed repo changes to `main` to repair GitHub Actions deployment behavior.
+- Removed the npm cache requirement that depended on a missing lockfile.
+- Switched deployment packaging from a fragile standalone-only bundle to a source artifact that App Service can build during deployment.
+- Enabled `SCM_DO_BUILD_DURING_DEPLOYMENT=true` in App Service.
+- Set App Service startup command to:
+  - `npx prisma migrate deploy && npm start`
+
+#### Runtime and App Fixes
+
+- Fixed auth route redirects to use the configured public `APP_URL` instead of the internal App Service request host.
+- This corrected redirects that were previously pointing users to `https://localhost:8080/...`.
+- Added a build step script to copy PDFKit runtime assets into:
+  - `.next/server/chunks/data`
+- This fixed the runtime error:
+  - `ENOENT: no such file or directory, open '/home/site/wwwroot/.next/server/chunks/data/Helvetica.afm'`
+
+#### Database and Storage Fixes
+
+- Confirmed the production app initially failed registration because database tables did not exist.
+- Startup was updated to run:
+  - `prisma migrate deploy`
+- Granted App Service managed identity the correct storage role:
+  - `Storage Blob Data Contributor`
+
+### Final Validation
+
+- Verified fresh deployment records appeared in Azure after each push.
+- Verified the health endpoint returned:
+  - `{"status":"ok","service":"bank-document-evidence-system",...}`
+- Verified the public login page loaded successfully.
+- Verified customer registration succeeded in the live deployed app.
+- Verified a live deposit succeeded and returned a saved transaction response:
+  - transaction type: `DEPOSIT`
+  - amount: `25.5`
+  - balanceBefore: `0`
+  - balanceAfter: `25.5`
+  - reference: `DEP-03636595-PILCIA`
+
+### Final State
+
+- Web App is live and responding.
+- PostgreSQL-backed registration works.
+- Deposit flow works end to end from Azure App Service.
+- Blob-backed evidence generation path no longer crashes on PDF asset lookup.
